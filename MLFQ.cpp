@@ -47,6 +47,9 @@ public:
 	int checkPriority(process current);
 	bool preempt(process current);
 	process increasePriority(process current, int priorityTime);
+	process searchHigherPriority(process current);
+	bool isHigher(process current);
+	process decreaseBurst(process previous, int i);
 
 private:
 	process *front;
@@ -231,7 +234,7 @@ void Algorithm::sendToReady(process current) {
 		created->turnAroundTime = current.turnAroundTime;
 
 		process *point = back;
-		while(point->priority>created->priority){
+		while(point->priority>created->priority && point!=front){
 			point = point->previous;
 		}
 		if (point == back) {
@@ -239,6 +242,12 @@ void Algorithm::sendToReady(process current) {
 			created->previous = back;
 			back = back->next;
 			back->next = 0;
+		}
+		else if (point == front) {
+			front->previous = created;
+			created->next = front;
+			front = front->previous;
+			front->previous = 0;
 		}
 		else {
 			created->previous = point;
@@ -406,6 +415,11 @@ process Algorithm::increasePriority(process current,int priorityTime) {
 	}
 }
 
+process Algorithm::decreaseBurst(process previous, int i) {
+	previous.CPUBurstAndIO[previous.currentCPUBurst] = i;
+	return previous;
+}
+
 int Algorithm::checkPriority(process current) {
 	int num = current.priority;
 	int priorityTimes[] = { 0,6,12 };
@@ -434,6 +448,24 @@ bool Algorithm::hasOne() {
 		return true;
 	}
 	return false;
+}
+
+process Algorithm::searchHigherPriority(process current) {
+	if (current.priority > front->priority) {
+		return *front;
+	}
+	else {
+		return current;
+	}
+}
+
+bool Algorithm::isHigher(process current) {
+	if (current.priority > front->priority) {
+		return true;
+	}
+	else {
+		return false;
+	}
 }
 
 int main() {
@@ -479,6 +511,22 @@ int main() {
 				time++;
 			}
 			else {
+				if (ReadyQueue.isHigher(now) == true) {
+					process temp = ReadyQueue.searchHigherPriority(now);
+					ReadyQueue.print(temp, time);
+					previous = ReadyQueue.decreaseBurst(previous, i);
+					ReadyQueue.sendToReady(previous);
+					previous = ReadyQueue.current();
+					ReadyQueue.deQueue();
+					now = ReadyQueue.current();
+					ReadyQueue.printReadyQueue();
+					IOQueue.printIOQueue();
+					priorityTime = ReadyQueue.checkPriority(previous);
+					preempt = ReadyQueue.preempt(previous);
+					endTime = time + priorityTime;
+					i = now.CPUBurstAndIO[now.currentCPUBurst];
+
+				}
 				if (time == endTime) {
 					if (preempt == true) {
 						previous = ReadyQueue.increasePriority(previous,priorityTime);
@@ -489,7 +537,7 @@ int main() {
 						j = IOQueue.last().currentCPUBurst;
 						IOQueue.adjustQueue(IOQueue.last().CPUBurstAndIO[j + 1]);
 					}
-					now = ReadyQueue.current();//returns null
+					now = ReadyQueue.current();
 					ReadyQueue.print(now, time);
 					previous = ReadyQueue.current();
 					ReadyQueue.deQueue();
