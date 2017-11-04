@@ -129,7 +129,7 @@ void Algorithm::deQueueSpecific(process transfer) {
 	if (front == 0) {
 		return;
 	}
-	else if (front->next == 0) {
+	else if (front->next == 0 && p->name == transfer.name) {
 		delete p;
 		front = 0;
 		back = 0;
@@ -593,5 +593,7 @@ int main() {
 			}
 		}
 	}
+
+	cout << "DONE" << endl << endl;
 	return 0;
 }
