@@ -50,6 +50,7 @@ public:
 	process searchHigherPriority(process current);
 	bool isHigher(process current);
 	process decreaseBurst(process previous, int i);
+	bool isFinished(process previous, int time);
 
 private:
 	process *front;
@@ -218,6 +219,12 @@ void Algorithm::sendToReady(process current) {
 	if (front == 0) {
 		front = back = created;
 	}
+	else if (front->next == 0 && front->priority>created->priority) {
+		front->previous = created;
+		created->next = front;
+		front = front->previous;
+		front->previous = 0;
+	}
 	else {
 		process *point = back;
 		while(point->priority>created->priority && point!=front){
@@ -243,13 +250,6 @@ void Algorithm::sendToReady(process current) {
 		}
 	}
 	//return *created;
-}
-
-void Algorithm::adjustQueue(int IO) {
-	process *point = back;
-	point->currentState = "IO";
-	point->currentIO = IO;
-	point->currentCPUBurst = point->currentCPUBurst + 2;
 }
 
 bool Algorithm::isEmpty() {
@@ -362,9 +362,16 @@ int Algorithm::getBurst() {
 	return p;
 }
 
+void Algorithm::adjustQueue(int IO) {
+	process *point = back;
+	point->currentState = "IO";
+	point->currentIO = IO;
+	point->currentCPUBurst = point->currentCPUBurst + 2;
+}
+
 bool Algorithm::preempt(process current) {
 	int num = current.priority;
-	int priorityTimes[] = { 0,6,12 };
+	int priorityTimes[] = { 0, 6, 12, current.CPUBurstAndIO[current.currentCPUBurst] };
 	num = priorityTimes[num];
 	int cnum = current.CPUBurstAndIO[current.currentCPUBurst];
 	
@@ -381,7 +388,7 @@ bool Algorithm::preempt(process current) {
 
 process Algorithm::increasePriority(process current,int priorityTime) {
 	int num = current.priority;
-	int priorityTimes[] = { 0,6,12 };
+	int priorityTimes[] = { 0, 6, 12, current.CPUBurstAndIO[current.currentCPUBurst] };
 	num = priorityTimes[num];
 	int cnum = current.CPUBurstAndIO[current.currentCPUBurst];
 
@@ -408,7 +415,7 @@ process Algorithm::decreaseBurst(process previous, int i) {
 
 int Algorithm::checkPriority(process current) {
 	int num = current.priority;
-	int priorityTimes[] = { 0,6,12 };
+	int priorityTimes[] = { 0, 6, 12, current.CPUBurstAndIO[current.currentCPUBurst]};
 	num = priorityTimes[num];
 	int cnum = current.CPUBurstAndIO[current.currentCPUBurst];
 	if ( cnum < num ) {
@@ -454,10 +461,22 @@ bool Algorithm::isHigher(process current) {
 	}
 }
 
+bool Algorithm::isFinished(process previous, int time) {
+	process *p = front;
+	if (previous.CPUBurstAndIO[(previous.currentCPUBurst)+1] == -1) {
+		while (p->name != previous.name) {
+			p = p->next;
+		}
+		p->turnAroundTime = time;
+		return true;
+	}
+	return false;
+}
+
 int main() {
 	Algorithm RR6;
 	Algorithm RR12;
-	Algorithm FCFS;
+	Algorithm Finished;
 
 	Algorithm ReadyQueue;
 	Algorithm IOQueue;
@@ -475,6 +494,7 @@ int main() {
 	process initial[] = { p1, p2, p3, p4, p5, p6, p7, p8 };
 	int elements = sizeof(initial) / sizeof(*initial);
 	ReadyQueue.initializeQueue(initial, elements);
+	Finished.initializeQueue(initial, elements);
 	RR6.initializeQueue(initial, elements);
 
 	int endTime, j = 0;
@@ -525,6 +545,9 @@ int main() {
 						previous = ReadyQueue.increasePriority(previous,priorityTime);
 						ReadyQueue.sendToReady(previous);
 					}
+					else if (Finished.isFinished(previous, time) == true) {
+						IOQueue.deQueueSpecific(previous);
+					}
 					else if (isCompleted(previous) == false) {
 						IOQueue.sendToQueue(previous);
 						j = IOQueue.last().currentCPUBurst;
@@ -539,7 +562,6 @@ int main() {
 					priorityTime = ReadyQueue.checkPriority(now);
 					preempt = ReadyQueue.preempt(now);
 					endTime = time + priorityTime;
-					//endTime = time + now.CPUBurstAndIO[now.currentCPUBurst];
 					i = now.CPUBurstAndIO[now.currentCPUBurst];
 				}
 				time++;
@@ -548,7 +570,7 @@ int main() {
 					if (IOQueue.transfer() == true) {
 						transfer = IOQueue.getFinishIO();
 						IOQueue.deQueueSpecific(transfer);
-						ReadyQueue.sendToReady(transfer);//same as sendToReadyQueue
+						ReadyQueue.sendToReady(transfer);
 						if (ReadyQueue.hasOne() && i == 0) {
 							if (now.name == "IDLE") {
 								endTime = time;
