@@ -457,7 +457,7 @@ process Algorithm::searchHigherPriority(process current) {
 
 bool Algorithm::isHigher(process current) {
 	if (front == 0) {
-		return true;
+		return false;
 	}
 	else if (current.priority > front->priority) {
 		return true;
