@@ -503,9 +503,12 @@ int main() {
 					previous = ReadyQueue.decreaseBurst(previous, i);
 					if (isCompleted(previous) == true) {
 						IOQueue.sendToQueue(previous);
+						IOQueue.adjustQueue(IOQueue.last().CPUBurstAndIO[(previous.currentCPUBurst) + 1]);
 						ReadyQueue.deQueueSpecific(previous);
 					}
-					ReadyQueue.sendToReady(previous);
+					else {
+						ReadyQueue.sendToReady(previous);
+					}
 					previous = ReadyQueue.current();
 					ReadyQueue.deQueue();
 					now = ReadyQueue.current();
