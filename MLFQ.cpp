@@ -444,6 +444,9 @@ bool Algorithm::hasOne() {
 }
 
 process Algorithm::searchHigherPriority(process current) {
+	if (front == 0) {
+		return current;
+	}
 	if (current.priority > front->priority) {
 		return *front;
 	}
@@ -453,7 +456,10 @@ process Algorithm::searchHigherPriority(process current) {
 }
 
 bool Algorithm::isHigher(process current) {
-	if (current.priority > front->priority) {
+	if (front == 0) {
+		return true;
+	}
+	else if (current.priority > front->priority) {
 		return true;
 	}
 	else {
