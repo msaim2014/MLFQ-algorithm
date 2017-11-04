@@ -131,6 +131,7 @@ void Algorithm::deQueueSpecific(process transfer) {
 	else if (front->next == 0) {
 		delete p;
 		front = 0;
+		back = 0;
 	}
 	else {
 		for (p = front; p != 0; p = p->next) {
@@ -168,7 +169,7 @@ process Algorithm::sendToQueue(process current) {
 		created = new process;
 		created->name = current.name;
 		created->priority = current.priority;
-		for (int j = 0; current.CPUBurstAndIO[j] != 0; j++) {
+		for (int j = 0; current.CPUBurstAndIO[j-1] != -1; j++) {
 			created->CPUBurstAndIO[j] = current.CPUBurstAndIO[j];
 		}
 		created->currentCPUBurst = current.currentCPUBurst;
@@ -186,7 +187,7 @@ process Algorithm::sendToQueue(process current) {
 		back = created;
 		created->name = current.name;
 		created->priority = current.priority;
-		for (int j = 0; current.CPUBurstAndIO[j] != 0; j++) {
+		for (int j = 0; current.CPUBurstAndIO[j-1] != -1; j++) {
 			created->CPUBurstAndIO[j] = current.CPUBurstAndIO[j];
 		}
 		created->currentCPUBurst = current.currentCPUBurst;
@@ -201,38 +202,23 @@ process Algorithm::sendToQueue(process current) {
 
 void Algorithm::sendToReady(process current) {
 	process *created;
+	created = new process;
+	created->name = current.name;
+	created->priority = current.priority;
+	for (int j = 0; current.CPUBurstAndIO[j-1] != -1; j++) {
+		created->CPUBurstAndIO[j] = current.CPUBurstAndIO[j];
+	}
+	created->currentCPUBurst = current.currentCPUBurst;
+	created->currentIO = current.currentIO;
+	created->currentState = current.currentState;
+	created->responseTime = current.responseTime;
+	created->waitTime = current.waitTime;
+	created->turnAroundTime = current.turnAroundTime;
+
 	if (front == 0) {
-		created = new process;
-		created->name = current.name;
-		created->priority = current.priority;
-		for (int j = 0; current.CPUBurstAndIO[j] != 0; j++) {
-			created->CPUBurstAndIO[j] = current.CPUBurstAndIO[j];
-		}
-		created->currentCPUBurst = current.currentCPUBurst;
-		created->currentIO = current.currentIO;
-		created->currentState = current.currentState;
-		created->responseTime = current.responseTime;
-		created->waitTime = current.waitTime;
-		created->turnAroundTime = current.turnAroundTime;
 		front = back = created;
 	}
 	else {
-		created = new process;
-		//back->next = created;
-		//created->previous = back;
-		//back = created;
-		created->name = current.name;
-		created->priority = current.priority;
-		for (int j = 0; current.CPUBurstAndIO[j] != 0; j++) {
-			created->CPUBurstAndIO[j] = current.CPUBurstAndIO[j];
-		}
-		created->currentCPUBurst = current.currentCPUBurst;
-		created->currentIO = current.currentIO;
-		created->currentState = current.currentState;
-		created->responseTime = current.responseTime;
-		created->waitTime = current.waitTime;
-		created->turnAroundTime = current.turnAroundTime;
-
 		process *point = back;
 		while(point->priority>created->priority && point!=front){
 			point = point->previous;
@@ -243,7 +229,7 @@ void Algorithm::sendToReady(process current) {
 			back = back->next;
 			back->next = 0;
 		}
-		else if (point == front) {
+		else if (point == front && point->priority>created->priority) {
 			front->previous = created;
 			created->next = front;
 			front = front->previous;
@@ -437,7 +423,7 @@ int Algorithm::checkPriority(process current) {
 }
 
 bool isCompleted(process transfer) {
-	if (transfer.CPUBurstAndIO[transfer.currentCPUBurst + 1] == 0) {
+	if (transfer.CPUBurstAndIO[transfer.currentCPUBurst] == 0) {
 		return true;
 	}
 	return false;
@@ -477,14 +463,14 @@ int main() {
 	Algorithm IOQueue;
 	process IO;
 	int time = 0;
-	process p1{ "P1", 1, { 4, 15, 5, 31, 6, 26, 7, 24, 6, 41, 4, 51, 5, 16, 4 }, 0, 0, "Waiting" };
-	process p2{ "P2", 1, { 9, 28, 11, 22, 15, 21, 12, 28, 8, 34, 11, 34, 9, 29, 10, 31, 7 }, 0, 0, "Waiting" };
-	process p3{ "P3", 1, { 24, 28, 12, 21, 6, 27, 17, 21, 11, 54, 22, 31, 18 }, 0, 0, "Waiting" };
-	process	p4{ "P4", 1, { 15, 35, 14, 41, 16, 45, 18, 51, 14, 61, 13, 54, 16, 61, 15 }, 0, 0, "Waiting" };
-	process p5{ "P5", 1, { 6, 22, 5, 21, 15, 31, 4, 26, 7, 31, 4, 18, 6, 21, 10, 33, 3 }, 0, 0, "Waiting" };
-	process p6{ "P6", 1, { 22, 38, 27, 41, 25, 29, 11, 26, 19, 32, 18, 22, 6, 26, 6 }, 0, 0, "Waiting" };
-	process p7{ "P7", 1, { 4, 36, 7, 31, 6, 32, 5, 41, 4, 42, 7, 39, 6, 33, 5, 34, 6, 21, 9 }, 0, 0, "Waiting" };
-	process p8{ "P8", 1, { 5, 14, 4, 33, 6, 31, 4, 31, 6, 27, 5, 21, 4, 19, 6, 11, 6 }, 0, 0, "Waiting" };
+	process p1{ "P1", 1, { 4, 15, 5, 31, 6, 26, 7, 24, 6, 41, 4, 51, 5, 16, 4, -1}, 0, 0, "Waiting" };
+	process p2{ "P2", 1, { 9, 28, 11, 22, 15, 21, 12, 28, 8, 34, 11, 34, 9, 29, 10, 31, 7, -1 }, 0, 0, "Waiting" };
+	process p3{ "P3", 1, { 24, 28, 12, 21, 6, 27, 17, 21, 11, 54, 22, 31, 18, -1 }, 0, 0, "Waiting" };
+	process	p4{ "P4", 1, { 15, 35, 14, 41, 16, 45, 18, 51, 14, 61, 13, 54, 16, 61, 15, -1 }, 0, 0, "Waiting" };
+	process p5{ "P5", 1, { 6, 22, 5, 21, 15, 31, 4, 26, 7, 31, 4, 18, 6, 21, 10, 33, 3, -1 }, 0, 0, "Waiting" };
+	process p6{ "P6", 1, { 22, 38, 27, 41, 25, 29, 11, 26, 19, 32, 18, 22, 6, 26, 6, -1 }, 0, 0, "Waiting" };
+	process p7{ "P7", 1, { 4, 36, 7, 31, 6, 32, 5, 41, 4, 42, 7, 39, 6, 33, 5, 34, 6, 21, 9, -1 }, 0, 0, "Waiting" };
+	process p8{ "P8", 1, { 5, 14, 4, 33, 6, 31, 4, 31, 6, 27, 5, 21, 4, 19, 6, 11, 6, -1 }, 0, 0, "Waiting" };
 
 	process initial[] = { p1, p2, p3, p4, p5, p6, p7, p8 };
 	int elements = sizeof(initial) / sizeof(*initial);
@@ -511,10 +497,14 @@ int main() {
 				time++;
 			}
 			else {
-				if (ReadyQueue.isHigher(now) == true) {
+				if (ReadyQueue.isHigher(previous) == true) {
 					process temp = ReadyQueue.searchHigherPriority(now);
 					ReadyQueue.print(temp, time);
 					previous = ReadyQueue.decreaseBurst(previous, i);
+					if (isCompleted(previous) == true) {
+						IOQueue.sendToQueue(previous);
+						ReadyQueue.deQueueSpecific(previous);
+					}
 					ReadyQueue.sendToReady(previous);
 					previous = ReadyQueue.current();
 					ReadyQueue.deQueue();
@@ -524,7 +514,7 @@ int main() {
 					priorityTime = ReadyQueue.checkPriority(previous);
 					preempt = ReadyQueue.preempt(previous);
 					endTime = time + priorityTime;
-					i = now.CPUBurstAndIO[now.currentCPUBurst];
+					i = previous.CPUBurstAndIO[previous.currentCPUBurst];
 
 				}
 				if (time == endTime) {
