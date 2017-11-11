@@ -51,7 +51,9 @@ public:
 	bool isHigher(process current);
 	process decreaseBurst(process previous, int i);
 	bool isFinished(process previous, int time);
-
+	void setResponseTime(int time, process now);
+	void computeWaitTime(process initial[]);
+	void printFinished();
 private:
 	process *front;
 	process *back;
@@ -308,6 +310,14 @@ void Algorithm::printIOQueue() {
 	cout << "*********************************************************" << endl;
 }
 
+void Algorithm::printFinished() {
+	cout << "*******************************************************************" << endl;
+	cout << "Process Response Time Turnaround Time Wait Time" << endl;
+	for (process *p = front; p != 0; p = p->next) {
+		cout << p->name << "         " << p->responseTime <<"          "<<p->turnAroundTime<<"          "<<p->waitTime<< endl;
+	}
+}
+
 process Algorithm::current() {
 	process IDLE{ "IDLE" };
 	if (front == 0) {
@@ -479,6 +489,35 @@ bool Algorithm::isFinished(process previous, int time) {
 	return false;
 }
 
+void Algorithm::setResponseTime(int time, process now) {
+	process *p = front->next;
+	while (p != 0 && p->name != now.name) {
+		p = p->next;
+	}
+	if (p == 0) {
+		return;
+	}
+	if (p->responseTime == 0) {
+		p->responseTime = time;
+	}
+	else {
+		return;
+	}
+}
+
+void Algorithm::computeWaitTime(process initial[]) {
+	int totalBurstAndIO = 0;
+	int burstOrIO = 0;
+	for (process *i = front; i != back->next; i = i->next) {
+		totalBurstAndIO = 0;
+		for (int j = 0; i->CPUBurstAndIO[j] != -1; j++) {
+			burstOrIO = i->CPUBurstAndIO[j];
+			totalBurstAndIO = totalBurstAndIO + burstOrIO;
+		}
+		i->waitTime = i->turnAroundTime - totalBurstAndIO;
+	}
+}
+
 int main() {
 	Algorithm RR6;
 	Algorithm RR12;
@@ -560,6 +599,7 @@ int main() {
 						IOQueue.adjustQueue(IOQueue.last().CPUBurstAndIO[j + 1]);
 					}
 					now = ReadyQueue.current();
+					Finished.setResponseTime(time, now);
 					ReadyQueue.print(now, time);
 					previous = ReadyQueue.current();
 					ReadyQueue.deQueue();
@@ -595,5 +635,16 @@ int main() {
 	}
 
 	cout << "DONE" << endl << endl;
+
+	double utilization = 0;
+	for (int i = 0; i <= elements - 1; i++)
+		for (int j = 0; initial[i].CPUBurstAndIO[j] > 0; j = j + 2) {
+			utilization = initial[i].CPUBurstAndIO[j] + utilization;
+		}
+
+	utilization = (utilization / (time - 1)) * 100;
+	cout << "CPU utilization is: " << utilization << endl;
+	Finished.computeWaitTime(initial);
+	Finished.printFinished();
 	return 0;
 }
